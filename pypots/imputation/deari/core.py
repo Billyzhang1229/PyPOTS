@@ -37,7 +37,6 @@ class _BDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
-        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         imputation_weight: float = 0.3,
         consistency_weight: float = 0.1,
@@ -61,7 +60,6 @@ class _BDEARI(nn.Module):
             hidden_agg=hidden_agg,
             n_attn_heads=n_attn_heads,
             n_attn_layers=n_attn_layers,
-            gate_with_sigmoid=gate_with_sigmoid,
             bayesian=bayesian,
             training_loss=training_loss,
         )

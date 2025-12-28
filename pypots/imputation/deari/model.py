@@ -43,8 +43,6 @@ class DEARI(BaseNNImputer):
         Number of attention heads in the transformer encoder.
     n_attn_layers : int
         Number of transformer encoder layers.
-    gate_with_sigmoid : bool
-        Whether to apply a sigmoid gate to the combine weights.
     imputation_weight : float
     consistency_weight : float
     bayesian : bool
@@ -68,7 +66,6 @@ class DEARI(BaseNNImputer):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
-        gate_with_sigmoid: bool = False,
         imputation_weight: float = 0.3,
         consistency_weight: float = 0.1,
         bayesian: bool = False,
@@ -107,7 +104,6 @@ class DEARI(BaseNNImputer):
         self.hidden_agg = hidden_agg
         self.n_attn_heads = n_attn_heads
         self.n_attn_layers = n_attn_layers
-        self.gate_with_sigmoid = gate_with_sigmoid
         self.imputation_weight = imputation_weight
         self.consistency_weight = consistency_weight
         self.bayesian = bayesian
@@ -127,7 +123,6 @@ class DEARI(BaseNNImputer):
             hidden_agg=self.hidden_agg,
             n_attn_heads=self.n_attn_heads,
             n_attn_layers=self.n_attn_layers,
-            gate_with_sigmoid=self.gate_with_sigmoid,
             bayesian=self.bayesian,
             imputation_weight=self.imputation_weight,
             consistency_weight=self.consistency_weight,
