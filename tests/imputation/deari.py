@@ -60,14 +60,23 @@ class TestDEARI(unittest.TestCase):
         self.deari.fit(TRAIN_SET, VAL_SET)
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_1_impute(self):
+    def test_1_predict_keys(self):
+        results = self.deari.predict(TEST_SET)
+        assert "imputation" in results
+        assert "f_hidden_states" not in results
+        assert "b_hidden_states" not in results
+        assert "f_reconstruction" not in results
+        assert "b_reconstruction" not in results
+
+    @pytest.mark.xdist_group(name="imputation-deari")
+    def test_2_impute(self):
         imputed_X = self.deari.impute(TEST_SET)
         assert not np.isnan(imputed_X).any(), "Output still has missing values after running impute()."
         test_MSE = calc_mse(imputed_X, DATA["test_X_ori"], DATA["test_X_indicating_mask"])
         logger.info(f"DEARI test_MSE: {test_MSE}")
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_2_parameters(self):
+    def test_3_parameters(self):
         assert hasattr(self.deari, "model") and self.deari.model is not None
         assert hasattr(self.deari, "optimizer") and self.deari.optimizer is not None
         assert hasattr(self.deari, "best_loss")
@@ -75,7 +84,7 @@ class TestDEARI(unittest.TestCase):
         assert hasattr(self.deari, "best_model_dict") and self.deari.best_model_dict is not None
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_3_saving_path(self):
+    def test_4_saving_path(self):
         assert os.path.exists(self.saving_path), f"file {self.saving_path} does not exist"
         check_tb_and_model_checkpoints_existence(self.deari)
         saved_model_path = os.path.join(self.saving_path, self.model_save_name)
@@ -83,7 +92,7 @@ class TestDEARI(unittest.TestCase):
         self.deari.load(saved_model_path)
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_4_lazy_loading(self):
+    def test_5_lazy_loading(self):
         # guard: skip if the general h5 dataset is not available in the environment
         if not (os.path.exists(GENERAL_H5_TRAIN_SET_PATH) and os.path.exists(GENERAL_H5_VAL_SET_PATH)):
             pytest.skip("General H5 dataset files are not available; skipping lazy-loading test.")

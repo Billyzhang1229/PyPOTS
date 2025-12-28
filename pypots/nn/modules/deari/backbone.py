@@ -35,8 +35,6 @@ class BackboneDEARI(nn.Module):
         Number of attention heads for the transformer encoder.
     n_attn_layers : int
         Number of transformer encoder layers.
-    gate_with_sigmoid : bool
-        Whether to apply a sigmoid gate to the combine weights.
     bayesian : bool
         If True, use Bayesian recurrent cells (requires blitz).
     training_loss : Criterion
@@ -53,7 +51,6 @@ class BackboneDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
-        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         training_loss: Criterion = MAE(),
     ):
@@ -67,7 +64,6 @@ class BackboneDEARI(nn.Module):
         self.hidden_agg = hidden_agg
         self.training_loss = training_loss
         self.bayesian = bayesian
-        self.gate_with_sigmoid = gate_with_sigmoid
 
         self.temp_decay_h = Decay(input_size=self.input_size, output_size=self.hidden_size, diag=False)
         self.temp_decay_x = Decay(input_size=self.input_size, output_size=self.input_size, diag=True)
@@ -192,9 +188,7 @@ class BackboneDEARI(nn.Module):
             gamma_x = self.temp_decay_x(d_t)
 
             # Combine feature regression and history via learned weights
-            beta = self.weight_combine(torch.cat([gamma_x, m_t], dim=1))
-            if self.gate_with_sigmoid:
-                beta = torch.sigmoid(beta)
+            beta = torch.sigmoid(self.weight_combine(torch.cat([gamma_x, m_t], dim=1)))
             x_comb_t = beta * xu + (1 - beta) * x_h
 
             # Loss on observed positions
@@ -241,7 +235,6 @@ class BackboneBDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
-        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         training_loss: Criterion = MAE(),
     ):
@@ -258,7 +251,6 @@ class BackboneBDEARI(nn.Module):
                     hidden_agg=hidden_agg,
                     n_attn_heads=n_attn_heads,
                     n_attn_layers=n_attn_layers,
-                    gate_with_sigmoid=gate_with_sigmoid,
                     bayesian=bayesian,
                     training_loss=training_loss,
                 )
@@ -276,7 +268,6 @@ class BackboneBDEARI(nn.Module):
                     hidden_agg=hidden_agg,
                     n_attn_heads=n_attn_heads,
                     n_attn_layers=n_attn_layers,
-                    gate_with_sigmoid=gate_with_sigmoid,
                     bayesian=bayesian,
                     training_loss=training_loss,
                 )

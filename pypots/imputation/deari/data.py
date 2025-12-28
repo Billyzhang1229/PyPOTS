@@ -17,6 +17,8 @@ def _parse_delta_deari(missing_mask: torch.Tensor) -> torch.Tensor:
 
     delta[0] = 1
     delta[t] = 1 + (1 - mask[t]) * delta[t-1]
+
+    TODO: Vectorize this computation to reduce Python-level loops for large batches.
     """
     device = missing_mask.device
     if missing_mask.dim() == 2:

@@ -13,10 +13,8 @@ from .backbone import BackboneDEARI, BackboneBDEARI
 from .layers import (
     FeatureRegression,
     Decay,
-    PositionalEncoding,
-    Conv1dWithInit,
-    TorchTransformerEncoder,
     BayesianGRUCell,
+    BayesianLSTMCell,
 )
 
 __all__ = [
@@ -24,8 +22,6 @@ __all__ = [
     "BackboneBDEARI",
     "FeatureRegression",
     "Decay",
-    "PositionalEncoding",
-    "Conv1dWithInit",
-    "TorchTransformerEncoder",
     "BayesianGRUCell",
+    "BayesianLSTMCell",
 ]
