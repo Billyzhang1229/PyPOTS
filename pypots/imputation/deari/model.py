@@ -31,11 +31,23 @@ class DEARI(BaseNNImputer):
     n_steps : int
     n_features : int
     rnn_hidden_size : int
+    n_layers : int
+        Number of stacked DEARI layers.
+    rnn_type : str
+        "gru" or "lstm".
+    attention : bool
+        Whether to use attention-based hidden aggregation between layers.
+    hidden_agg : str
+        One of {"cls", "last", "mean"} for attention aggregation.
+    n_attn_heads : int
+        Number of attention heads in the transformer encoder.
+    n_attn_layers : int
+        Number of transformer encoder layers.
     imputation_weight : float
     consistency_weight : float
     bayesian : bool
-        If True, use Bayesian GRU cell (requires package ``blitz-bayesian-pytorch``).
-        Otherwise uses a standard GRU.
+        If True, use Bayesian recurrent cells (requires package ``blitz-bayesian-pytorch``).
+        Otherwise uses standard GRU/LSTM cells based on rnn_type.
     kl_weight : float
         Weight for KL regularization when bayesian=True.
     batch_size, epochs, patience, training_loss, validation_metric, optimizer,
@@ -48,7 +60,13 @@ class DEARI(BaseNNImputer):
         n_steps: int,
         n_features: int,
         rnn_hidden_size: int,
-        imputation_weight: float = 1.0,
+        n_layers: int = 8,
+        rnn_type: str = "lstm",
+        attention: bool = True,
+        hidden_agg: str = "cls",
+        n_attn_heads: int = 4,
+        n_attn_layers: int = 2,
+        imputation_weight: float = 0.3,
         consistency_weight: float = 0.1,
         bayesian: bool = False,
         kl_weight: float = 1e-4,
@@ -80,6 +98,12 @@ class DEARI(BaseNNImputer):
         self.n_steps = n_steps
         self.n_features = n_features
         self.rnn_hidden_size = rnn_hidden_size
+        self.n_layers = n_layers
+        self.rnn_type = rnn_type
+        self.attention = attention
+        self.hidden_agg = hidden_agg
+        self.n_attn_heads = n_attn_heads
+        self.n_attn_layers = n_attn_layers
         self.imputation_weight = imputation_weight
         self.consistency_weight = consistency_weight
         self.bayesian = bayesian
@@ -93,6 +117,12 @@ class DEARI(BaseNNImputer):
             n_steps=self.n_steps,
             n_features=self.n_features,
             rnn_hidden_size=self.rnn_hidden_size,
+            n_layers=self.n_layers,
+            rnn_type=self.rnn_type,
+            attention=self.attention,
+            hidden_agg=self.hidden_agg,
+            n_attn_heads=self.n_attn_heads,
+            n_attn_layers=self.n_attn_layers,
             bayesian=self.bayesian,
             imputation_weight=self.imputation_weight,
             consistency_weight=self.consistency_weight,

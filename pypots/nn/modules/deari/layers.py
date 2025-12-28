@@ -145,3 +145,42 @@ class BayesianGRUCell(nn.Module):
             if hasattr(lyr, "kl_loss"):
                 kl = kl + lyr.kl_loss()
         return kl if isinstance(kl, torch.Tensor) else torch.tensor(kl)
+
+
+class BayesianLSTMCell(nn.Module):
+    """
+    A minimal Bayesian LSTMCell using blitz BayesianLinear layers.
+    """
+    def __init__(self, input_size: int, hidden_size: int):
+        super().__init__()
+        try:
+            from blitz.modules import BayesianLinear
+        except Exception as e:
+            raise ImportError(
+                "Bayesian LSTM requires `blitz-bayesian-pytorch`. "
+                "Install with `pip install blitz-bayesian-pytorch`."
+            ) from e
+
+        self.hidden_size = hidden_size
+        self.W_ih = BayesianLinear(input_size, hidden_size * 4)
+        self.W_hh = BayesianLinear(hidden_size, hidden_size * 4)
+        self._bayesian_layers = [self.W_ih, self.W_hh]
+
+    def forward(self, x: torch.Tensor, state):
+        h_prev, c_prev = state
+        gates = self.W_ih(x) + self.W_hh(h_prev)
+        i, f, g, o = gates.chunk(4, dim=1)
+        i = torch.sigmoid(i)
+        f = torch.sigmoid(f)
+        g = torch.tanh(g)
+        o = torch.sigmoid(o)
+        c = f * c_prev + i * g
+        h = o * torch.tanh(c)
+        return h, c
+
+    def kl_loss(self) -> torch.Tensor:
+        kl = 0.0
+        for lyr in self._bayesian_layers:
+            if hasattr(lyr, "kl_loss"):
+                kl = kl + lyr.kl_loss()
+        return kl if isinstance(kl, torch.Tensor) else torch.tensor(kl)
