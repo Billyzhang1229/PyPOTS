@@ -43,6 +43,8 @@ class DEARI(BaseNNImputer):
         Number of attention heads in the transformer encoder.
     n_attn_layers : int
         Number of transformer encoder layers.
+    gate_with_sigmoid : bool
+        Whether to apply a sigmoid gate to the combine weights.
     imputation_weight : float
     consistency_weight : float
     bayesian : bool
@@ -66,6 +68,7 @@ class DEARI(BaseNNImputer):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
+        gate_with_sigmoid: bool = False,
         imputation_weight: float = 0.3,
         consistency_weight: float = 0.1,
         bayesian: bool = False,
@@ -104,6 +107,7 @@ class DEARI(BaseNNImputer):
         self.hidden_agg = hidden_agg
         self.n_attn_heads = n_attn_heads
         self.n_attn_layers = n_attn_layers
+        self.gate_with_sigmoid = gate_with_sigmoid
         self.imputation_weight = imputation_weight
         self.consistency_weight = consistency_weight
         self.bayesian = bayesian
@@ -123,6 +127,7 @@ class DEARI(BaseNNImputer):
             hidden_agg=self.hidden_agg,
             n_attn_heads=self.n_attn_heads,
             n_attn_layers=self.n_attn_layers,
+            gate_with_sigmoid=self.gate_with_sigmoid,
             bayesian=self.bayesian,
             imputation_weight=self.imputation_weight,
             consistency_weight=self.consistency_weight,
@@ -149,7 +154,6 @@ class DEARI(BaseNNImputer):
             X,
             missing_mask,
             deltas,
-            back_X,
             back_missing_mask,
             back_deltas,
         ) = self._send_data_to_given_device(data)
@@ -162,7 +166,6 @@ class DEARI(BaseNNImputer):
                 "deltas": deltas,
             },
             "backward": {
-                "X": back_X,
                 "missing_mask": back_missing_mask,
                 "deltas": back_deltas,
             },
@@ -175,7 +178,6 @@ class DEARI(BaseNNImputer):
             X,
             missing_mask,
             deltas,
-            back_X,
             back_missing_mask,
             back_deltas,
             X_ori,
@@ -190,7 +192,6 @@ class DEARI(BaseNNImputer):
                 "deltas": deltas,
             },
             "backward": {
-                "X": back_X,
                 "missing_mask": back_missing_mask,
                 "deltas": back_deltas,
             },
@@ -232,7 +233,12 @@ class DEARI(BaseNNImputer):
         self._auto_save_model_if_necessary(confirm_saving=self.model_saving_strategy == "best")
 
     @torch.no_grad()
-    def predict(self, test_set: Union[dict, str], file_type: str = "hdf5") -> dict:
+    def predict(
+        self,
+        test_set: Union[dict, str],
+        file_type: str = "hdf5",
+        return_details: bool = False,
+    ) -> dict:
         self.model.eval()
         test_dataset = DatasetForDEARI(test_set, return_X_ori=False, return_y=False, file_type=file_type)
         test_loader = DataLoader(
@@ -244,13 +250,9 @@ class DEARI(BaseNNImputer):
         dict_result_collector = []
         for _, data in enumerate(test_loader):
             inputs = self._assemble_input_for_testing(data)
-            results = self.model(inputs, calc_criterion=False)
+            results = self.model(inputs, calc_criterion=False, return_details=return_details)
             dict_result_collector.append(results)
         result_dict = gather_listed_dicts(dict_result_collector)
-        # expose the conventional key used by BaseImputer.impute() and tests
-        # (keep both for backward-compatibility)
-        if "imputed_data" in result_dict:
-            result_dict["imputation"] = result_dict["imputed_data"]
         return result_dict
 
     def impute(self, test_set: Union[dict, str], file_type: str = "hdf5") -> np.ndarray:

@@ -23,8 +23,8 @@ class _BDEARI(nn.Module):
       logging in the training loop: keys include ``loss`` (when computed),
       ``reconstruction_loss``, ``consistency_loss``, ``kl_loss``, and optionally ``metric``
       if ground-truth masks are provided.
-    - When ``calc_criterion=False``, forward additionally returns heavy tensors such as
-      ``imputed_data`` and the per-direction reconstructions/hidden states for analysis.
+    - When ``return_details=True``, forward additionally returns heavy tensors such as
+      per-direction reconstructions/hidden states for analysis.
     """
     def __init__(
         self,
@@ -37,6 +37,7 @@ class _BDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
+        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         imputation_weight: float = 0.3,
         consistency_weight: float = 0.1,
@@ -60,11 +61,18 @@ class _BDEARI(nn.Module):
             hidden_agg=hidden_agg,
             n_attn_heads=n_attn_heads,
             n_attn_layers=n_attn_layers,
+            gate_with_sigmoid=gate_with_sigmoid,
             bayesian=bayesian,
             training_loss=training_loss,
         )
 
-    def forward(self, inputs: Dict[str, Any], calc_criterion: bool = True, **_: Any) -> Dict[str, Any]:
+    def forward(
+        self,
+        inputs: Dict[str, Any],
+        calc_criterion: bool = False,
+        return_details: bool = False,
+        **_: Any,
+    ) -> Dict[str, Any]:
         (
             imputed_data,
             f_recon,
@@ -76,16 +84,16 @@ class _BDEARI(nn.Module):
             kl_loss,
         ) = self.backbone(inputs)
 
-        # return scalars for logging; attach heavy tensors only when not computing criterion
+        # return scalars for logging; attach heavy tensors only when requested
         results: Dict[str, Any] = {
+            "imputation": imputed_data,
             "consistency_loss": consistency_loss.detach(),
             "reconstruction_loss": reconstruction_loss.detach(),
             "kl_loss": (kl_loss.detach() if torch.is_tensor(kl_loss) else torch.tensor(0.0, device=imputed_data.device)),
         }
-        if not calc_criterion:
+        if return_details:
             results.update(
                 {
-                    "imputed_data": imputed_data,
                     "f_reconstruction": f_recon,
                     "b_reconstruction": b_recon,
                     "f_hidden_states": f_hidden,

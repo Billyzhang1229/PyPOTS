@@ -35,6 +35,8 @@ class BackboneDEARI(nn.Module):
         Number of attention heads for the transformer encoder.
     n_attn_layers : int
         Number of transformer encoder layers.
+    gate_with_sigmoid : bool
+        Whether to apply a sigmoid gate to the combine weights.
     bayesian : bool
         If True, use Bayesian recurrent cells (requires blitz).
     training_loss : Criterion
@@ -51,6 +53,7 @@ class BackboneDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
+        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         training_loss: Criterion = MAE(),
     ):
@@ -64,6 +67,7 @@ class BackboneDEARI(nn.Module):
         self.hidden_agg = hidden_agg
         self.training_loss = training_loss
         self.bayesian = bayesian
+        self.gate_with_sigmoid = gate_with_sigmoid
 
         self.temp_decay_h = Decay(input_size=self.input_size, output_size=self.hidden_size, diag=False)
         self.temp_decay_x = Decay(input_size=self.input_size, output_size=self.input_size, diag=True)
@@ -109,16 +113,14 @@ class BackboneDEARI(nn.Module):
         if prev_hiddens.dim() != 3:
             return prev_hiddens
 
-        if self.attention:
-            attended = self.transformer_encoder(prev_hiddens)
-        else:
-            attended = prev_hiddens
-
         if self.hidden_agg == "cls":
+            if not self.attention:
+                raise ValueError("hidden_agg='cls' requires attention=True.")
             cls_token = self.class_token.expand(prev_hiddens.size(0), -1, -1)
             h_in = torch.cat([cls_token, prev_hiddens], dim=1)
             h_out = self.transformer_encoder(h_in)
             return h_out[:, 0, :]
+        attended = self.transformer_encoder(prev_hiddens) if self.attention else prev_hiddens
         if self.hidden_agg == "last":
             return attended[:, -1, :]
         if self.hidden_agg == "mean":
@@ -191,6 +193,8 @@ class BackboneDEARI(nn.Module):
 
             # Combine feature regression and history via learned weights
             beta = self.weight_combine(torch.cat([gamma_x, m_t], dim=1))
+            if self.gate_with_sigmoid:
+                beta = torch.sigmoid(beta)
             x_comb_t = beta * xu + (1 - beta) * x_h
 
             # Loss on observed positions
@@ -207,17 +211,15 @@ class BackboneDEARI(nn.Module):
             else:
                 h, c = self.rnn(rnn_in, (h, c))
 
-            # Bayesian KL accumulation if any
-            if self.bayesian and hasattr(self.rnn, "kl_loss"):
-                kl_accum = kl_accum + self.rnn.kl_loss()
-
             reconstruction.append(x_comb_t.unsqueeze(1))
             hidden_seq.append(h.unsqueeze(1))
 
         reconstruction = torch.cat(reconstruction, dim=1)
         hidden_seq = torch.cat(hidden_seq, dim=1)
-        # normalize KL by time steps for stable scaling across sequence lengths
-        kl_accum = kl_accum / x.size(1)
+        if self.bayesian and hasattr(self.rnn, "kl_loss"):
+            kl_accum = self.rnn.kl_loss()
+        else:
+            kl_accum = torch.tensor(0.0, device=x.device)
 
         if return_hidden_sequence:
             return x_imp, reconstruction, h, x_loss.squeeze(), kl_accum.squeeze(), hidden_seq
@@ -239,6 +241,7 @@ class BackboneBDEARI(nn.Module):
         hidden_agg: str = "cls",
         n_attn_heads: int = 4,
         n_attn_layers: int = 2,
+        gate_with_sigmoid: bool = False,
         bayesian: bool = False,
         training_loss: Criterion = MAE(),
     ):
@@ -255,6 +258,7 @@ class BackboneBDEARI(nn.Module):
                     hidden_agg=hidden_agg,
                     n_attn_heads=n_attn_heads,
                     n_attn_layers=n_attn_layers,
+                    gate_with_sigmoid=gate_with_sigmoid,
                     bayesian=bayesian,
                     training_loss=training_loss,
                 )
@@ -272,6 +276,7 @@ class BackboneBDEARI(nn.Module):
                     hidden_agg=hidden_agg,
                     n_attn_heads=n_attn_heads,
                     n_attn_layers=n_attn_layers,
+                    gate_with_sigmoid=gate_with_sigmoid,
                     bayesian=bayesian,
                     training_loss=training_loss,
                 )
