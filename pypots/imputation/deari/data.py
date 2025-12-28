@@ -10,7 +10,28 @@ import torch
 from torch.utils.data import Dataset
 
 from ...data.dataset.base import BaseDataset
-from ...data.utils import parse_delta
+
+
+def _parse_delta_deari(missing_mask: torch.Tensor) -> torch.Tensor:
+    """DEARI-style delta computation aligned with the original implementation.
+
+    delta[0] = 1
+    delta[t] = 1 + (1 - mask[t]) * delta[t-1]
+    """
+    device = missing_mask.device
+    if missing_mask.dim() == 2:
+        n_steps, n_features = missing_mask.shape
+        deltas = [torch.ones(1, n_features, device=device)]
+        for step in range(1, n_steps):
+            deltas.append(torch.ones(1, n_features, device=device) + (1 - missing_mask[step]) * deltas[-1])
+        return torch.cat(deltas, dim=0)
+
+    n_samples, n_steps, n_features = missing_mask.shape
+    delta_collector = []
+    for m_mask in missing_mask:
+        delta = _parse_delta_deari(m_mask)
+        delta_collector.append(delta.unsqueeze(0))
+    return torch.cat(delta_collector, dim=0)
 
 
 class DatasetForDEARI(BaseDataset):
@@ -58,19 +79,17 @@ class DatasetForDEARI(BaseDataset):
         assert X.dim() == 2 and missing_mask.shape == X.shape, "X/mask must be [T, F] per BaseDataset."
 
         # Forward deltas
-        deltas = parse_delta(missing_mask)  # [T, F]
+        deltas = _parse_delta_deari(missing_mask)  # [T, F]
 
         # Backward streams
-        back_X = torch.flip(X, dims=[0])
         back_missing_mask = torch.flip(missing_mask, dims=[0])
-        back_deltas = parse_delta(back_missing_mask)
+        back_deltas = _parse_delta_deari(back_missing_mask)
 
         collated = [
             indices,
             X,                  # forward X [T,F]
             missing_mask,       # forward mask [T,F]
             deltas,             # forward deltas [T,F]
-            back_X,             # backward X [T,F]
             back_missing_mask,  # backward mask [T,F]
             back_deltas,        # backward deltas [T,F]
         ]

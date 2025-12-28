@@ -42,6 +42,7 @@ class TestDEARI(unittest.TestCase):
         n_steps=DATA["n_steps"],
         n_features=DATA["n_features"],
         rnn_hidden_size=64,
+        n_layers=1,
         imputation_weight=1.0,
         consistency_weight=0.1,
         bayesian=False,           # flip to True if blitz is available
