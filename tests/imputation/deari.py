@@ -42,7 +42,7 @@ class TestDEARI(unittest.TestCase):
         n_steps=DATA["n_steps"],
         n_features=DATA["n_features"],
         rnn_hidden_size=64,
-        n_layers=1,
+        n_layers=2,
         imputation_weight=1.0,
         consistency_weight=0.1,
         bayesian=False,           # flip to True if blitz is available
@@ -69,14 +69,26 @@ class TestDEARI(unittest.TestCase):
         assert "b_reconstruction" not in results
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_2_impute(self):
+    def test_2_predict_details(self):
+        results = self.deari.predict(TEST_SET, return_details=True)
+        assert "imputation" in results
+        assert "f_hidden_states" in results
+        assert "b_hidden_states" in results
+        assert "f_reconstruction" in results
+        assert "b_reconstruction" in results
+        assert results["imputation"].ndim == 3
+        assert results["f_reconstruction"].shape == results["imputation"].shape
+        assert results["b_reconstruction"].shape == results["imputation"].shape
+
+    @pytest.mark.xdist_group(name="imputation-deari")
+    def test_3_impute(self):
         imputed_X = self.deari.impute(TEST_SET)
         assert not np.isnan(imputed_X).any(), "Output still has missing values after running impute()."
         test_MSE = calc_mse(imputed_X, DATA["test_X_ori"], DATA["test_X_indicating_mask"])
         logger.info(f"DEARI test_MSE: {test_MSE}")
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_3_parameters(self):
+    def test_4_parameters(self):
         assert hasattr(self.deari, "model") and self.deari.model is not None
         assert hasattr(self.deari, "optimizer") and self.deari.optimizer is not None
         assert hasattr(self.deari, "best_loss")
@@ -84,7 +96,7 @@ class TestDEARI(unittest.TestCase):
         assert hasattr(self.deari, "best_model_dict") and self.deari.best_model_dict is not None
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_4_saving_path(self):
+    def test_5_saving_path(self):
         assert os.path.exists(self.saving_path), f"file {self.saving_path} does not exist"
         check_tb_and_model_checkpoints_existence(self.deari)
         saved_model_path = os.path.join(self.saving_path, self.model_save_name)
@@ -92,7 +104,7 @@ class TestDEARI(unittest.TestCase):
         self.deari.load(saved_model_path)
 
     @pytest.mark.xdist_group(name="imputation-deari")
-    def test_5_lazy_loading(self):
+    def test_6_lazy_loading(self):
         # guard: skip if the general h5 dataset is not available in the environment
         if not (os.path.exists(GENERAL_H5_TRAIN_SET_PATH) and os.path.exists(GENERAL_H5_VAL_SET_PATH)):
             pytest.skip("General H5 dataset files are not available; skipping lazy-loading test.")
