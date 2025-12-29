@@ -5,7 +5,7 @@ Core module assembling bidirectional DEARI.
 # Created by <you>
 # License: BSD-3-Clause
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 import torch
 import torch.nn as nn
@@ -22,7 +22,8 @@ class _BDEARI(nn.Module):
     - When ``calc_criterion=True``, forward returns only lightweight scalars suitable for
       logging in the training loop: keys include ``loss`` (when computed),
       ``reconstruction_loss``, ``consistency_loss``, ``kl_loss``, and optionally ``metric``
-      if ground-truth masks are provided.
+      if ground-truth masks are provided. ``imputation`` is returned only when
+      ``calc_criterion=False`` or ``return_details=True``.
     - When ``return_details=True``, forward additionally returns heavy tensors such as
       per-direction reconstructions/hidden states for analysis.
     """
@@ -84,16 +85,17 @@ class _BDEARI(nn.Module):
 
         # return scalars for logging; attach heavy tensors only when requested
         results: Dict[str, Any] = {
-            "imputation": imputed_data,
             "consistency_loss": consistency_loss.detach(),
             "reconstruction_loss": reconstruction_loss.detach(),
             "kl_loss": (kl_loss.detach() if torch.is_tensor(kl_loss) else torch.tensor(0.0, device=imputed_data.device)),
         }
+        if not calc_criterion or return_details:
+            results["imputation"] = imputed_data
         if return_details:
             results.update(
                 {
                     "f_reconstruction": f_recon,
-                    "b_reconstruction": b_recon,
+                    "b_reconstruction": b_recon.flip(dims=[1]),
                     "f_hidden_states": f_hidden,
                     "b_hidden_states": b_hidden,
                 }
@@ -111,9 +113,10 @@ class _BDEARI(nn.Module):
 
         # always compute validation metric if ground truth is provided
         if "X_ori" in inputs and "indicating_mask" in inputs:
-            X_ori = inputs["X_ori"]
-            indicating_mask = inputs["indicating_mask"]
-            metric = self.validation_metric(imputed_data, X_ori, indicating_mask)
-            results["metric"] = metric
+            with torch.no_grad():
+                X_ori = inputs["X_ori"]
+                indicating_mask = inputs["indicating_mask"]
+                metric = self.validation_metric(imputed_data, X_ori, indicating_mask)
+                results["metric"] = metric
 
         return results

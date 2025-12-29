@@ -7,8 +7,6 @@ Dataset for DEARI (bidirectional, forward/backward + deltas).
 
 from typing import Union
 import torch
-from torch.utils.data import Dataset
-
 from ...data.dataset.base import BaseDataset
 
 

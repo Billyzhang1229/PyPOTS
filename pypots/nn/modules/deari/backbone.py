@@ -164,7 +164,7 @@ class BackboneDEARI(nn.Module):
 
         x_loss = torch.zeros(1, device=x.device)
         kl_accum = torch.zeros(1, device=x.device)
-        x_imp = x.clone()
+        x_imp_list = []
         reconstruction = []
         hidden_seq = []
 
@@ -195,9 +195,9 @@ class BackboneDEARI(nn.Module):
             x_loss = x_loss + self.training_loss(x_comb_t, x_t, m_t)
 
             # Final imputation
-            x_imp[:, t, :] = (m_t * x_t) + ((1 - m_t) * x_comb_t)
+            x_imp_t = (m_t * x_t) + ((1 - m_t) * x_comb_t)
             # RNN input: imputed values + mask
-            rnn_in = torch.cat([x_imp[:, t, :], m_t], dim=1)
+            rnn_in = torch.cat([x_imp_t, m_t], dim=1)
 
             # Step recurrent cell
             if self.rnn_type == "gru":
@@ -207,7 +207,9 @@ class BackboneDEARI(nn.Module):
 
             reconstruction.append(x_comb_t.unsqueeze(1))
             hidden_seq.append(h.unsqueeze(1))
+            x_imp_list.append(x_imp_t.unsqueeze(1))
 
+        x_imp = torch.cat(x_imp_list, dim=1)
         reconstruction = torch.cat(reconstruction, dim=1)
         hidden_seq = torch.cat(hidden_seq, dim=1)
         if self.bayesian and hasattr(self.rnn, "kl_loss"):
