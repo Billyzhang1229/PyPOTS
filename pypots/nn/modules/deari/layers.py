@@ -2,7 +2,7 @@
 Layers and cells used in DEARI.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 import math

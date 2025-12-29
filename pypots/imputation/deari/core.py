@@ -2,7 +2,7 @@
 Core module assembling bidirectional DEARI.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 from typing import Dict, Any

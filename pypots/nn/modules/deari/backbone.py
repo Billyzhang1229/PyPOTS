@@ -2,7 +2,7 @@
 Backbone for DEARI (and its bidirectional variant) in PyPOTS style.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 import math
@@ -226,6 +226,9 @@ class BackboneBDEARI(nn.Module):
     """
     Bidirectional DEARI assembling forward & backward backbones.
     """
+    # Weight for consistency loss computation between forward and backward directions
+    CONSISTENCY_LOSS_WEIGHT = 0.1
+    
     def __init__(
         self,
         n_steps: int,
@@ -325,7 +328,7 @@ class BackboneBDEARI(nn.Module):
 
             imp = (f_imputed + b_imputed.flip(dims=[1])) / 2
             xreg_losses.append(f_loss + b_loss)
-            consistency_losses.append(torch.abs(f_imputed - b_imputed.flip(dims=[1])).mean() * 1e-1)
+            consistency_losses.append(torch.abs(f_imputed - b_imputed.flip(dims=[1])).mean() * self.CONSISTENCY_LOSS_WEIGHT)
 
             x_imp_layers.append((x * m) + ((1 - m) * imp))
             f_hidden_layers.append(f_hidden_seq)

@@ -2,7 +2,7 @@
 Test cases for DEARI imputation model.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 import os.path

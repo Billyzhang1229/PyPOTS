@@ -2,7 +2,7 @@
 Dataset for DEARI (bidirectional, forward/backward + deltas).
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 from typing import Union
