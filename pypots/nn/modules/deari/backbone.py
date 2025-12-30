@@ -2,7 +2,7 @@
 Backbone for DEARI (and its bidirectional variant) in PyPOTS style.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 import math
@@ -11,6 +11,7 @@ import torch.nn as nn
 
 from .layers import FeatureRegression, Decay, BayesianGRUCell, BayesianLSTMCell
 from ..loss import Criterion, MAE
+
 
 
 class BackboneDEARI(nn.Module):
@@ -296,8 +297,8 @@ class BackboneBDEARI(nn.Module):
         b_hidden_layers = []
         f_recon = None
         b_recon = None
-        f_hidden_last = None
-        b_hidden_last = None
+        f_hidden_seq_last = None
+        b_hidden_seq_last = None
 
         for i in range(self.n_layers):
             prev_f_hiddens = None if i == 0 else f_hidden_layers[-1]
@@ -311,7 +312,7 @@ class BackboneBDEARI(nn.Module):
                 h=prev_f_hiddens,
                 return_hidden_sequence=True,
             )
-            f_imputed, f_recon, f_hidden_last, f_loss, f_kl, f_hidden_seq = ret_f
+            f_imputed, f_recon, _, f_loss, f_kl, f_hidden_seq = ret_f
 
             x_b = x_f.flip(dims=[1])
             ret_b = self.model_b[i](
@@ -321,7 +322,7 @@ class BackboneBDEARI(nn.Module):
                 h=prev_b_hiddens,
                 return_hidden_sequence=True,
             )
-            b_imputed, b_recon, b_hidden_last, b_loss, b_kl, b_hidden_seq = ret_b
+            b_imputed, b_recon, _, b_loss, b_kl, b_hidden_seq = ret_b
 
             imp = (f_imputed + b_imputed.flip(dims=[1])) / 2
             xreg_losses.append(f_loss + b_loss)
@@ -331,6 +332,8 @@ class BackboneBDEARI(nn.Module):
             f_hidden_layers.append(f_hidden_seq)
             b_hidden_layers.append(b_hidden_seq)
             kl_losses.append(f_kl + b_kl)
+            f_hidden_seq_last = f_hidden_seq
+            b_hidden_seq_last = b_hidden_seq
 
         x_imp = torch.mean(torch.stack(x_imp_layers, dim=1), dim=1)
         reconstruction_loss = torch.mean(torch.stack(xreg_losses, dim=0), dim=0)
@@ -344,8 +347,8 @@ class BackboneBDEARI(nn.Module):
             x_imp,
             f_recon,
             b_recon,
-            f_hidden_last,
-            b_hidden_last,
+            f_hidden_seq_last,
+            b_hidden_seq_last,
             consistency_loss,
             reconstruction_loss,
             kl_loss,

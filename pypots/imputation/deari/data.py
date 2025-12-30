@@ -2,41 +2,20 @@
 Dataset for DEARI (bidirectional, forward/backward + deltas).
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 from typing import Union
 import torch
 from ...data.dataset.base import BaseDataset
-
-
-def _parse_delta_deari(missing_mask: torch.Tensor) -> torch.Tensor:
-    """DEARI-style delta computation aligned with the original implementation.
-
-    delta[0] = 1
-    delta[t] = 1 + (1 - mask[t]) * delta[t-1]
-
-    TODO: Vectorize this computation to reduce Python-level loops for large batches.
-    """
-    device = missing_mask.device
-    if missing_mask.dim() == 2:
-        n_steps, n_features = missing_mask.shape
-        deltas = [torch.ones(1, n_features, device=device)]
-        for step in range(1, n_steps):
-            deltas.append(torch.ones(1, n_features, device=device) + (1 - missing_mask[step]) * deltas[-1])
-        return torch.cat(deltas, dim=0)
-
-    n_samples, n_steps, n_features = missing_mask.shape
-    delta_collector = []
-    for m_mask in missing_mask:
-        delta = _parse_delta_deari(m_mask)
-        delta_collector.append(delta.unsqueeze(0))
-    return torch.cat(delta_collector, dim=0)
+from ...data.utils import _parse_delta_torch
 
 
 class DatasetForDEARI(BaseDataset):
     """
     Wraps data for DEARI. Produces forward/backward streams and deltas.
+    Deltas are computed via PyPOTS' standard GRU-D style definition
+    (delta[0]=0, and delta[t] depends on mask[t-1]).
 
     Parameters
     ----------
@@ -78,13 +57,12 @@ class DatasetForDEARI(BaseDataset):
         # Ensure shape [T, F]
         assert X.dim() == 2 and missing_mask.shape == X.shape, "X/mask must be [T, F] per BaseDataset."
 
-        # Forward deltas
-        deltas = _parse_delta_deari(missing_mask)  # [T, F]
+        # Forward deltas (use PyPOTS default delta definition for consistency across models)
+        deltas = _parse_delta_torch(missing_mask)  # [T, F]
 
         # Backward streams
         back_missing_mask = torch.flip(missing_mask, dims=[0])
-        back_deltas = _parse_delta_deari(back_missing_mask)
-
+        back_deltas = _parse_delta_torch(back_missing_mask)
         collated = [
             indices,
             X,                  # forward X [T,F]

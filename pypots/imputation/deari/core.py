@@ -2,7 +2,7 @@
 Core module assembling bidirectional DEARI.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 from typing import Dict, Any
@@ -23,9 +23,9 @@ class _BDEARI(nn.Module):
       logging in the training loop: keys include ``loss`` (when computed),
       ``reconstruction_loss``, ``consistency_loss``, ``kl_loss``, and optionally ``metric``
       if ground-truth masks are provided. ``imputation`` is returned only when
-      ``calc_criterion=False`` or ``return_details=True``.
+      ``calc_criterion=False``.
     - When ``return_details=True`` and ``calc_criterion=False``, forward additionally
-      returns heavy tensors such as per-direction reconstructions/hidden states for analysis.
+      returns heavy tensors such as per-direction reconstructions/hidden state sequences for analysis.
     """
     def __init__(
         self,
@@ -104,7 +104,7 @@ class _BDEARI(nn.Module):
                         "f_reconstruction": f_recon,
                         "b_reconstruction": b_recon.flip(dims=[1]),
                         "f_hidden_states": f_hidden,
-                        "b_hidden_states": b_hidden,
+                        "b_hidden_states": b_hidden.flip(dims=[1]),
                     }
                 )
 

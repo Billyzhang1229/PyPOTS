@@ -2,7 +2,7 @@
 The PyTorch implementation of DEARI for imputation in PyPOTS.
 """
 
-# Created by <you>
+# Created by Ao Zhang <ao.zhang@kcl.ac.uk>
 # License: BSD-3-Clause
 
 from typing import Union, Optional
@@ -46,7 +46,9 @@ class DEARI(BaseNNImputer):
     imputation_weight : float
     consistency_weight : float
     bayesian : bool
-        If True, use Bayesian recurrent cells (requires package ``blitz-bayesian-pytorch``).
+        If True, use Bayesian recurrent cells (requires package ``blitz-bayesian-pytorch``) and
+        add a KL regularization term. Monte Carlo sampling / freeze-unfreeze scheduling from the
+        original training script is not implemented in this wrapper.
         Otherwise uses standard GRU/LSTM cells based on rnn_type.
     kl_weight : float
         Weight for KL regularization when bayesian=True.
